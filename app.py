@@ -7,7 +7,7 @@ import analyzer
 # 🎨 페이지 설정
 # -----------------------------------------------
 st.set_page_config(
-    page_title="☕ 카페&맛집 추천기",
+    page_title="카페&맛집 추천기",
     page_icon="☕",
     layout="wide"
 )
