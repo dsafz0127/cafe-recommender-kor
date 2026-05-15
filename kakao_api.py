@@ -3,7 +3,7 @@ import requests
 
 # ✅ secrets.py에서 키 가져오기
 try:
-    from secrets import KAKAO_API_KEY  # 로컬 환경
+    from config import KAKAO_API_KEY  # 로컬 환경
 except:
     import streamlit as st
     KAKAO_API_KEY = st.secrets["KAKAO_API_KEY"]  # 배포 환경
