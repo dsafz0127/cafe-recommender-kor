@@ -338,7 +338,7 @@ with st.sidebar:
     st.header("검색 조건")
 
     with st.form("search_form"):
-        region = st.text_input("지역", value="성수", placeholder="예: 홍대, 강남, 제주")
+        region = st.text_input("지역 또는 메뉴", value="", placeholder="예: 홍대, 강남, 제주")
         place_type = st.selectbox(
             "유형",
             ["카페", "맛집", "브런치", "디저트", "베이커리",
@@ -351,7 +351,7 @@ with st.sidebar:
              "24시", "호프", "와인바", "칵테일바", "일본식주점"],
         )
         result_size = st.selectbox(
-            "결과 수", [15, 30, 45, 60], index=0,
+            "결과 수", [15, 30, 45], index=0,
             help="표시할 검색 결과의 개수를 선택하세요.",
         )
         submitted = st.form_submit_button(
