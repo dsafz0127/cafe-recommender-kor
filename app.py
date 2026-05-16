@@ -1087,7 +1087,7 @@ if df is not None:
                     if p_url:
                         st.link_button("카카오맵", p_url)
 
-    # ====== 탭 3: 즐겨찾기 ======
+        # ====== 탭 3: 즐겨찾기 ======
     with tab_fav:
         st.subheader("⭐ 즐겨찾기")
         if not st.session_state.favorites:
@@ -1095,7 +1095,8 @@ if df is not None:
                 "<div style='text-align:center;padding:60px 20px;background:#FFFAF5;"
                 "border-radius:20px;border:2px dashed #FFDAB9;margin:20px 0;'>"
                 "<div style='font-size:48px;margin-bottom:10px;'>⭐</div>"
-                "<div style='font-size:18px;color:#E65100;font-weight:600;'>아직 즐겨찾기한 장소가 없어요</div>"
+                "<div style='font-size:18px;color:#E65100;font-weight:600;'>"
+                "아직 즐겨찾기한 장소가 없어요</div>"
                 "<div style='font-size:14px;color:#999;margin-top:8px;'>"
                 "추천 리스트에서 ☆ 버튼을 눌러 추가해보세요!</div></div>",
                 unsafe_allow_html=True,
@@ -1103,20 +1104,24 @@ if df is not None:
         else:
             st.markdown(f"**총 {len(st.session_state.favorites)}곳**")
 
-            if st.button("📥 전체 초기화", type="secondary"):
+            if st.button("📥 전체 초기화", type="secondary", key="tab_fav_clear"):
                 st.session_state.favorites = []
                 st.rerun()
 
             for idx, fav in enumerate(st.session_state.favorites):
+                fav_key = make_favorite_key(fav)
+
+                # 카드 렌더링
                 st.markdown(render_fav_card(fav), unsafe_allow_html=True)
 
-    st.markdown("<div class='fav-del-wrap'>", unsafe_allow_html=True)
-    if st.button("✕", key=f"sfav_del_{idx}"):
-        remove_favorite_by_key(make_favorite_key(fav))
-        st.rerun()
-    st.markdown("</div>", unsafe_allow_html=True)
+                # 삭제 버튼 (for 루프 안에 있어야 함)
+                col_space, col_del = st.columns([5, 1])
+                with col_del:
+                    if st.button("✕ 삭제", key=f"sfav_del_{idx}", type="secondary"):
+                        remove_favorite_by_key(fav_key)
+                        st.rerun()
 
-
+                st.markdown("<hr class='card-divider'>", unsafe_allow_html=True)
 
     # ====== 탭 4: 요약 분석 ======
     with tab_summary:
