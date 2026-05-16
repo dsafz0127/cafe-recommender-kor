@@ -712,7 +712,7 @@ with st.sidebar:
     st.header("🔍 검색 조건")
 
     with st.form("search_form"):
-        region = st.text_input("지역 또는 메뉴", value="성수", placeholder="예: 홍대, 강남, 제주")
+        region = st.text_input("지역 및 메뉴", value="", placeholder="예: 홍대 덮밥, 성수 수제버거 ")
         place_type = st.selectbox(
             "유형",
             ["카페", "맛집", "브런치", "디저트", "베이커리",
