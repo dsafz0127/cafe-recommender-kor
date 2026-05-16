@@ -726,7 +726,6 @@ with st.sidebar:
         )
         result_size = st.selectbox(
             "결과 수", [15, 30, 45], index=0,
-            "결과 수", [15, 30, 45], index=0,
             help="표시할 검색 결과의 개수를 선택하세요.",
         )
         submitted = st.form_submit_button(
