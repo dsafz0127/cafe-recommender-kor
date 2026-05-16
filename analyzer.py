@@ -83,7 +83,6 @@ def valid_coord(x, y):
 
 
 def parse_query_intent(query):
-    """query 문자열에서 유형/특징 키워드 추출"""
     q = clean_text(query)
     q_types    = [k for k in TYPE_RULES    if k in q]
     q_features = [k for k in FEATURE_RULES if k in q]
@@ -149,7 +148,6 @@ def calculate_score_detail(row, query=""):
         score += best_type_score
         reasons.append(f"검색 유형 '{best_type}' 일치 +{best_type_score}")
     elif category:
-        # 유형 없는 검색이라도 카테고리는 있으면 기본점
         score += 15
         reasons.append("카테고리 정보 있음 +15")
 
@@ -159,7 +157,7 @@ def calculate_score_detail(row, query=""):
             if has_any(text, FEATURE_RULES[f]):
                 score += 10
                 reasons.append(f"검색 특징 '{f}' 일치 +10")
-                break   # 첫 번째 매칭만 반영
+                break
 
     # ── 4) 정보 완성도 (최대 25점) ─────────────────────────────
     if place_name:
@@ -260,7 +258,6 @@ def analyze_data(places_list, query=""):
         if col in df.columns:
             df[col] = df[col].apply(clean_text)
 
-    # 카카오 정확도 순위 보존 (API 반환 순서 = 정확도 순)
     df["_api_rank"] = range(1, len(df) + 1)
 
     details = df.apply(lambda row: calculate_score_detail(row, query=query), axis=1)

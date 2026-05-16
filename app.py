@@ -1,3 +1,7 @@
+import html
+from textwrap import dedent
+from urllib.parse import quote, unquote
+
 import pandas as pd
 import streamlit as st
 
@@ -22,47 +26,320 @@ st.set_page_config(
 
 st.markdown("""
 <style>
+    /* ── 기본 ──────────────────────────────── */
     .main { background-color: #FFF8F0; }
+
+    /* ── 태그 ──────────────────────────────── */
     .tag {
-        background-color:#FFF3E0; color:#E65100;
-        padding:3px 10px; border-radius:10px;
-        font-size:13px; margin:2px; display:inline-block;
+        background-color: #FFF3E0;
+        color: #E65100;
+        padding: 3px 10px;
+        border-radius: 10px;
+        font-size: 13px;
+        margin: 2px;
+        display: inline-block;
     }
+
+    /* ── 점수 카드 ─────────────────────────── */
     .score-card {
-        text-align:center;
-        padding:15px;
-        border-radius:15px;
-        color:white;
-        box-shadow:0 4px 12px rgba(0,0,0,0.15);
+        text-align: center;
+        padding: 15px;
+        border-radius: 15px;
+        color: white;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
     }
+
+    /* ── TOP 뱃지 ──────────────────────────── */
     .top-badge {
-        display:inline-block; padding:2px 10px;
-        border-radius:20px; font-weight:bold;
-        font-size:12px; vertical-align:middle; margin-left:8px;
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 12px;
+        vertical-align: middle;
+        margin-left: 8px;
     }
-    .top-1 { background:#FFD700; color:#333; }
-    .top-2 { background:#C0C0C0; color:#333; }
-    .top-3 { background:#CD7F32; color:#fff; }
-    .card-divider { border:none; border-top:1px solid #FFE0CC; margin:16px 0; }
+    .top-1 { background: #FFD700; color: #333; }
+    .top-2 { background: #C0C0C0; color: #333; }
+    .top-3 { background: #CD7F32; color: #fff; }
+
+    /* ── 구분선 ────────────────────────────── */
+    .card-divider {
+        border: none;
+        border-top: 1px solid #FFE0CC;
+        margin: 16px 0;
+    }
+
+    /* ── 사이드바 즐겨찾기 카드 ────────────── */
+    .fav-card {
+        position: relative;
+        background: linear-gradient(135deg, #FFFAF5, #FFF5EE);
+        border: 1px solid #FFD9C2;
+        border-radius: 16px;
+        margin: 8px 0 0 0;
+        padding: 12px 14px 58px 14px;
+        overflow: hidden;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .fav-card:hover {
+        border-color: #FFB088;
+        box-shadow: 0 6px 16px rgba(230,81,0,0.10);
+    }
+
+    .fav-card-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 5px;
+        padding-right: 54px;
+    }
+
+    .fav-grade-dot {
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        display: inline-block;
+        flex-shrink: 0;
+    }
+
+    .fav-card-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: #333;
+        line-height: 1.35;
+        word-break: keep-all;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        text-decoration: none !important;
+    }
+
+    .fav-card-category {
+        font-size: 10px;
+        color: #999;
+        line-height: 1.3;
+        margin-bottom: 5px;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        text-decoration: none !important;
+    }
+
+    .fav-card-addr {
+        font-size: 11px;
+        color: #888;
+        line-height: 1.45;
+        word-break: keep-all;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
+        text-decoration: none !important;
+    }
+
+    .fav-card-score {
+        position: absolute;
+        top: 10px;
+        right: 12px;
+        font-size: 10px;
+        font-weight: 700;
+        padding: 3px 8px;
+        border-radius: 999px;
+        color: #fff;
+        line-height: 1.2;
+    }
+
+    /* ── 사이드바 즐겨찾기 삭제 버튼 오버레이 ───────── */
+    .fav-del-wrap {
+        display: flex;
+        justify-content: flex-end;
+        margin-top: -40px;
+        margin-bottom: 10px;
+        padding-right: 4px;
+        position: relative;
+        z-index: 30;
+    }
+
+    .fav-del-wrap .stButton {
+        width: auto !important;
+    }
+
+    .fav-del-wrap button {
+        width: 28px !important;
+        height: 28px !important;
+        min-height: 28px !important;
+        padding: 0 !important;
+        border-radius: 9px !important;
+        background: rgba(255,255,255,0.18) !important;
+        border: 1px solid rgba(255,255,255,0.28) !important;
+        color: #fff !important;
+        font-size: 14px !important;
+        font-weight: 800 !important;
+        line-height: 1 !important;
+        box-shadow: none !important;
+        backdrop-filter: blur(2px);
+    }
+
+    .fav-del-wrap button:hover {
+        background: rgba(255,255,255,0.26) !important;
+        border-color: rgba(255,255,255,0.42) !important;
+        color: #fff !important;
+    }
+
+    /* ── 사이드바 즐겨찾기 장소 버튼  ───────────────── */
+    .fav-cta-shell {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 10px;
+        height: 36px;
+        padding: 0 42px 0 12px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        background: linear-gradient(135deg, #FF8A5B, #E96A2C);
+        border: 1px solid #E46A31;
+        color: #fff;
+        font-size: 12px;
+        font-weight: 700;
+        box-sizing: border-box;
+        box-shadow: 0 4px 10px rgba(233,106,44,0.22);
+        z-index: 1;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    .fav-cta-shell-disabled {
+        background: linear-gradient(135deg, #F2D7C9, #EBC9B7);
+        border-color: #E3B8A0;
+        color: #9C7A68;
+        box-shadow: none;
+    }
+
+    /* ── 큰 주황색 링크 버튼 ───────────────── */
+    .fav-map-link,
+    .fav-map-link:hover,
+    .fav-map-link:visited,
+    .fav-map-link:active {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 10px;
+        height: 36px;
+        padding: 0 42px 0 12px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        background: linear-gradient(135deg, #FF8A5B, #E96A2C);
+        border: 1px solid #E46A31;
+        color: #fff !important;
+        font-size: 12px;
+        font-weight: 700;
+        box-sizing: border-box;
+        box-shadow: 0 4px 10px rgba(233,106,44,0.22);
+        z-index: 1;
+        text-decoration: none !important;
+        user-select: none;
+    }
+
+    .fav-map-link:hover {
+        background: linear-gradient(135deg, #FF8A5B, #E96A2C);
+        border: 1px solid #E46A31;
+        color: #fff !important;
+        text-decoration: none !important;
+    }
+
+    .fav-map-link-disabled,
+    .fav-map-link-disabled:hover,
+    .fav-map-link-disabled:visited,
+    .fav-map-link-disabled:active {
+        position: absolute;
+        left: 14px;
+        right: 14px;
+        bottom: 10px;
+        height: 36px;
+        padding: 0 42px 0 12px;
+        border-radius: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: flex-start;
+        background: linear-gradient(135deg, #F2D7C9, #EBC9B7);
+        border: 1px solid #E3B8A0;
+        color: #9C7A68 !important;
+        font-size: 12px;
+        font-weight: 700;
+        box-sizing: border-box;
+        box-shadow: none;
+        z-index: 1;
+        text-decoration: none !important;
+        pointer-events: none;
+        user-select: none;
+    }
+
+    /* ── 버튼 내부 X ──────────────────────── */
+    .fav-del-btn,
+    .fav-del-btn:hover,
+    .fav-del-btn:visited,
+    .fav-del-btn:active {
+        position: absolute;
+        right: 18px;
+        bottom: 14px;
+        z-index: 3;
+        width: 28px;
+        height: 28px;
+        border-radius: 9px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(255,255,255,0.18);
+        border: 1px solid rgba(255,255,255,0.28);
+        color: #fff !important;
+        text-decoration: none !important;
+        font-size: 14px;
+        font-weight: 800;
+        line-height: 1;
+        box-sizing: border-box;
+        transition: background-color 0.18s ease, border-color 0.18s ease;
+        backdrop-filter: blur(2px);
+    }
+
+    .fav-del-btn:hover {
+        background: rgba(255,255,255,0.26);
+        border-color: rgba(255,255,255,0.42);
+        color: #fff !important;
+    }
+
+    .fav-empty {
+        text-align: center;
+        padding: 24px 10px;
+        color: #bbb;
+        font-size: 14px;
+    }
+
+    .fav-empty-icon {
+        font-size: 36px;
+        margin-bottom: 6px;
+    }
 </style>
 """, unsafe_allow_html=True)
-
 
 # -----------------------------------------------
 # 세션 상태 초기화
 # -----------------------------------------------
 defaults = {
-    "results_df":     None,
+    "results_df": None,
     "search_history": [],
-    "favorites":      [],
-    "last_query":     "",
-    "_last_error":    None,
-    "_last_query":    None,
+    "favorites": [],
+    "last_query": "",
+    "_last_error": None,
+    "_last_query": None,
 }
 for k, v in defaults.items():
     if k not in st.session_state:
         st.session_state[k] = v
-
 
 # -----------------------------------------------
 # 상수
@@ -90,7 +367,6 @@ MARKER_COLOR = {
     "C등급": "#7B8FA1",
 }
 
-
 # -----------------------------------------------
 # 캐시 검색
 # -----------------------------------------------
@@ -98,29 +374,74 @@ MARKER_COLOR = {
 def cached_search_multi(query, total_size):
     return kakao_api.search_places_multi(query, total_size=total_size)
 
+# -----------------------------------------------
+# 즐겨찾기 유틸
+# -----------------------------------------------
+def make_favorite_key(item):
+    if hasattr(item, "to_dict"):
+        item = item.to_dict()
 
-# -----------------------------------------------
-# 즐겨찾기
-# -----------------------------------------------
+    if not isinstance(item, dict):
+        return str(item).strip()
+
+    place_id = str(item.get("id", "")).strip()
+    if place_id:
+        return f"id::{place_id}"
+
+    place_name = str(item.get("place_name", "")).strip()
+    address = str(item.get("address_name", "")).strip()
+    road = str(item.get("road_address_name", "")).strip()
+
+    return "||".join([place_name, address, road])
+
+
 def toggle_favorite(row):
-    name = row["place_name"]
-    idx = [i for i, f in enumerate(st.session_state.favorites) if f["place_name"] == name]
+    row_dict = row.to_dict() if hasattr(row, "to_dict") else dict(row)
+    name = row_dict.get("place_name", "")
+    row_key = make_favorite_key(row_dict)
+
+    idx = [
+        i for i, f in enumerate(st.session_state.favorites)
+        if make_favorite_key(f) == row_key
+    ]
+
     if idx:
         st.session_state.favorites.pop(idx[0])
         st.toast(f"'{name}' 즐겨찾기 해제")
     else:
-        st.session_state.favorites.append(row.to_dict())
+        st.session_state.favorites.append(row_dict)
         st.toast(f"'{name}' 즐겨찾기 추가!")
 
 
-def is_favorite(name):
-    return any(f["place_name"] == name for f in st.session_state.favorites)
+def is_favorite(item):
+    target_key = make_favorite_key(item)
+    return any(make_favorite_key(f) == target_key for f in st.session_state.favorites)
 
 
-def remove_favorite(name):
-    st.session_state.favorites = [
-        f for f in st.session_state.favorites if f["place_name"] != name
-    ]
+def remove_favorite_by_key(target_key):
+    removed = False
+    new_favorites = []
+
+    for fav in st.session_state.favorites:
+        fav_key = make_favorite_key(fav)
+        if not removed and fav_key == target_key:
+            removed = True
+            continue
+        new_favorites.append(fav)
+
+    st.session_state.favorites = new_favorites
+
+
+def normalize_place_url(url):
+    url = str(url or "").strip()
+    if not url:
+        return ""
+    if url.startswith("http://"):
+        return "https://" + url[len("http://"):]
+    if url.startswith("//"):
+        return "https:" + url
+    return url
+
 
 
 # -----------------------------------------------
@@ -130,7 +451,6 @@ def add_search_history(q):
     if q and q not in st.session_state.search_history:
         st.session_state.search_history.insert(0, q)
         st.session_state.search_history = st.session_state.search_history[:5]
-
 
 # -----------------------------------------------
 # 렌더 헬퍼
@@ -153,8 +473,64 @@ def render_tags(tags):
 
 def render_score_card(score, grade, gdesc):
     start, end = GRADE_GRADIENT.get(grade, ("#FF6B35", "#FF8C61"))
-    return f"""<div class='score-card' style='background:linear-gradient(135deg,{start},{end});border:2px solid rgba(255,255,255,0.15);'><div style='font-size:36px;font-weight:bold;line-height:1.1;'>{score}</div><div style='font-size:11px;opacity:.85;margin-top:2px;'>추천 적합도</div><div style='font-size:13px;margin-top:6px;font-weight:bold;'>{grade}</div><div style='font-size:11px;opacity:.85;'>{gdesc}</div></div>"""
+    return (
+        f"<div class='score-card' style='background:linear-gradient(135deg,{start},{end});"
+        f"border:2px solid rgba(255,255,255,0.15);'>"
+        f"<div style='font-size:36px;font-weight:bold;line-height:1.1;'>{score}</div>"
+        f"<div style='font-size:11px;opacity:.85;margin-top:2px;'>추천 적합도</div>"
+        f"<div style='font-size:13px;margin-top:6px;font-weight:bold;'>{grade}</div>"
+        f"<div style='font-size:11px;opacity:.85;'>{gdesc}</div></div>"
+    )
 
+
+
+def render_fav_card(fav):
+    fav_name_raw = str(fav.get("place_name", "")).strip()
+    fav_name = html.escape(fav_name_raw)
+    fav_cat = html.escape(str(fav.get("category_name", "")).strip())
+    fav_addr = html.escape(
+        str(fav.get("road_address_name") or fav.get("address_name") or "주소 정보 없음")
+    )
+    fav_grade = str(fav.get("grade", "")).strip()
+    fav_score = fav.get("quality_score", 0)
+
+    fav_url = normalize_place_url(fav.get("place_url", ""))
+    fav_url_html = html.escape(fav_url, quote=True)
+
+    grade_color = MARKER_COLOR.get(fav_grade, "#7B8FA1")
+    score_bg, _ = GRADE_GRADIENT.get(fav_grade, ("#FF6B35", "#FF8C61"))
+
+    if isinstance(fav_score, float):
+        score_text = f"{fav_score:.1f}점"
+    else:
+        score_text = f"{fav_score}점"
+
+    parts = [
+        '<div class="fav-card">',
+        '<div class="fav-card-header">',
+        f'<span class="fav-grade-dot" style="background:{grade_color};"></span>',
+        f'<span class="fav-card-name">{fav_name}</span>',
+        '</div>',
+        f'<div class="fav-card-category">{fav_cat if fav_cat else "카테고리 없음"}</div>',
+        f'<div class="fav-card-addr">📍 {fav_addr}</div>',
+        f'<span class="fav-card-score" style="background:{score_bg};">{score_text}</span>',
+    ]
+
+    if fav_url:
+        parts.append(
+            f'<a class="fav-map-link" href="{fav_url_html}" '
+            f'target="_blank" rel="noopener noreferrer">'
+            f'카카오맵에서 보기 ↗'
+            f'</a>'
+        )
+    else:
+        parts.append('<span class="fav-map-link-disabled">링크 없음</span>')
+
+    parts.append('</div>')
+    return "".join(parts)
+
+
+    
 
 # -----------------------------------------------
 # 검색 실행
@@ -190,7 +566,6 @@ def run_search(query, total_size=15):
     else:
         st.session_state["_last_error"] = None
         st.session_state["_last_query"] = None
-
 
 # -----------------------------------------------
 # 차트
@@ -321,7 +696,6 @@ def chart_score_ranking(df):
     )
     return fig
 
-
 # -----------------------------------------------
 # 앱 제목
 # -----------------------------------------------
@@ -335,10 +709,10 @@ st.divider()
 # 사이드바
 # -----------------------------------------------
 with st.sidebar:
-    st.header("검색 조건")
+    st.header("🔍 검색 조건")
 
     with st.form("search_form"):
-        region = st.text_input("지역", value="성수", placeholder="예: 홍대, 강남, 제주")
+        region = st.text_input("지역 또는 메뉴", value="성수", placeholder="예: 홍대, 강남, 제주")
         place_type = st.selectbox(
             "유형",
             ["카페", "맛집", "브런치", "디저트", "베이커리",
@@ -351,7 +725,7 @@ with st.sidebar:
              "24시", "호프", "와인바", "칵테일바", "일본식주점"],
         )
         result_size = st.selectbox(
-            "결과 수", [15, 30, 45, 60], index=0,
+            "결과 수", [15, 30, 45], index=0,
             help="표시할 검색 결과의 개수를 선택하세요.",
         )
         submitted = st.form_submit_button(
@@ -367,7 +741,7 @@ with st.sidebar:
 
     st.divider()
 
-    # 빠른 검색
+    # ── 빠른 검색 ────────────────────────────
     st.markdown("**⚡ 빠른 검색**")
     quick_searches = [
         ("성수 카페", "성수 카페"),
@@ -384,7 +758,7 @@ with st.sidebar:
 
     st.divider()
 
-    # 최근 검색어
+    # ── 최근 검색어 ──────────────────────────
     if st.session_state.search_history:
         st.markdown("**🕓 최근 검색어**")
         for q in st.session_state.search_history:
@@ -393,35 +767,26 @@ with st.sidebar:
                 st.rerun()
         st.divider()
 
-    # 즐겨찾기 요약
-    if st.session_state.favorites:
-        st.markdown(f"**⭐ 즐겨찾기 ({len(st.session_state.favorites)}곳)**")
-        for idx, fav in enumerate(st.session_state.favorites):
-            fav_url = fav.get("place_url", "")
-            fav_name = fav.get("place_name", "")
-            col_link, col_del = st.columns([5, 1])
-            with col_link:
-                if fav_url:
-                    st.markdown(
-                        f"<a href='{fav_url}' target='_blank' "
-                        f"style='text-decoration:none;color:#333;font-size:13px;'>"
-                        f"{fav_name}</a>",
-                        unsafe_allow_html=True,
-                    )
-                else:
-                    st.markdown(
-                        f"<span style='font-size:13px;'>{fav_name}</span>",
-                        unsafe_allow_html=True,
-                    )
-            with col_del:
-                if st.button("✕", key=f"sdel_{idx}"):
-                    remove_favorite(fav_name)
-                    st.rerun()
+    # ── 즐겨찾기 (카드형 UI) ─────────────────
+    fav_count = len(st.session_state.favorites)
+    st.markdown(f"**⭐ 즐겨찾기** `{fav_count}곳`")
 
-        if st.button("🗑️ 즐겨찾기 초기화", use_container_width=True):
+    if not st.session_state.favorites:
+        st.markdown(
+            "<div class='fav-empty'>"
+            "<div class='fav-empty-icon'>⭐</div>"
+            "아직 즐겨찾기한 장소가 없어요"
+            "</div>",
+            unsafe_allow_html=True,
+        )
+    else:
+        for fav in st.session_state.favorites:
+            st.markdown(render_fav_card(fav), unsafe_allow_html=True)
+
+        st.markdown("")
+        if st.button("🗑️ 즐겨찾기 초기화", use_container_width=True, type="secondary"):
             st.session_state.favorites = []
             st.rerun()
-
 
 # -----------------------------------------------
 # 메인 화면
@@ -479,12 +844,11 @@ elif df is None:
     st.info("왼쪽에서 검색 조건을 설정하고 검색 버튼을 눌러보세요!")
     c1, c2, c3 = st.columns(3)
     with c1:
-        st.markdown("### 카페 탐방\n성수, 홍대, 연남동...")
+        st.markdown("### ☕ 카페 탐방\n성수, 홍대, 연남동...")
     with c2:
-        st.markdown("### 맛집 탐방\n강남, 이태원, 을지로...")
+        st.markdown("### 🍽️ 맛집 탐방\n강남, 이태원, 을지로...")
     with c3:
-        st.markdown("### 전국 어디든\n제주, 부산, 전주...")
-
+        st.markdown("### 🗺️ 전국 어디든\n제주, 부산, 전주...")
 
 # -----------------------------------------------
 # 검색 결과
@@ -507,12 +871,12 @@ if df is not None:
     st.divider()
 
     tab_list, tab_map, tab_fav, tab_summary = st.tabs(
-        ["추천 리스트", "지도", "즐겨찾기", "요약 분석"]
+        ["📋 추천 리스트", "🗺️ 지도", "⭐ 즐겨찾기", "📊 요약 분석"]
     )
 
     # ====== 탭 1: 추천 리스트 ======
     with tab_list:
-        with st.expander("필터 & 정렬", expanded=True):
+        with st.expander("🔧 필터 & 정렬", expanded=True):
             fc1, fc2, fc3, fc4, fc5 = st.columns(5)
             with fc1:
                 gf = st.selectbox("등급", ["전체"] + GRADE_ORDER, key="gf")
@@ -557,7 +921,7 @@ if df is not None:
                             st.caption(row.get("phone", "") or "전화번호 없음")
 
                         if row.get("place_url"):
-                            st.markdown(f"[카카오맵에서 보기]({row['place_url']})")
+                            st.markdown(f"[카카오맵에서 보기]({normalize_place_url(row['place_url'])})")
 
                         st.markdown(render_tags(row["purpose_tags"]), unsafe_allow_html=True)
 
@@ -566,9 +930,9 @@ if df is not None:
                                 st.markdown(f"- {reason}")
 
                         fl = (
-                            "즐겨찾기 해제"
-                            if is_favorite(row["place_name"])
-                            else "즐겨찾기 추가"
+                            "⭐ 즐겨찾기 해제"
+                            if is_favorite(row)
+                            else "☆ 즐겨찾기 추가"
                         )
                         if st.button(fl, key=f"fav_{row['place_name']}_{row['rank']}"):
                             toggle_favorite(row)
@@ -587,7 +951,7 @@ if df is not None:
 
     # ====== 탭 2: 지도 ======
     with tab_map:
-        st.subheader("지도")
+        st.subheader("🗺️ 지도")
         st.caption("검색된 장소의 위치를 확인하세요. 마커를 클릭하면 상세 정보를 볼 수 있어요.")
 
         map_df = df.copy()
@@ -597,10 +961,8 @@ if df is not None:
             map_df["lon"] = map_df["x"].astype(float)
             map_df["lat"] = map_df["y"].astype(float)
             map_df = map_df[
-                (map_df["lat"] > 30)
-                & (map_df["lat"] < 40)
-                & (map_df["lon"] > 120)
-                & (map_df["lon"] < 135)
+                (map_df["lat"] > 30) & (map_df["lat"] < 40)
+                & (map_df["lon"] > 120) & (map_df["lon"] < 135)
             ]
         except Exception:
             map_df = pd.DataFrame()
@@ -627,13 +989,9 @@ if df is not None:
                     grade = row.get("grade", "")
                     color = MARKER_COLOR.get(grade, "#E63946")
                     p_name = row["place_name"]
-                    addr = (
-                        row.get("road_address_name")
-                        or row.get("address_name")
-                        or ""
-                    )
+                    addr = row.get("road_address_name") or row.get("address_name") or ""
                     score = row["quality_score"]
-                    p_url = row.get("place_url", "")
+                    p_url = normalize_place_url(row.get("place_url", ""))
 
                     icon_html = f"""
                     <div style="
@@ -666,11 +1024,7 @@ if df is not None:
 
                     folium.Marker(
                         location=[row["lat"], row["lon"]],
-                        icon=DivIcon(
-                            html=icon_html,
-                            icon_size=(36, 36),
-                            icon_anchor=(18, 18),
-                        ),
+                        icon=DivIcon(html=icon_html, icon_size=(36, 36), icon_anchor=(18, 18)),
                         popup=folium.Popup(popup_html, max_width=250),
                         tooltip=f"{rank_num}. {p_name}",
                     ).add_to(m)
@@ -690,15 +1044,10 @@ if df is not None:
                     "</div>",
                     unsafe_allow_html=True,
                 )
-                st.caption(
-                    f"총 {len(map_df)}곳 표시 | 원을 클릭하면 자세한 정보를 볼 수 있어요"
-                )
+                st.caption(f"총 {len(map_df)}곳 표시 | 원을 클릭하면 자세한 정보를 볼 수 있어요")
 
             except ImportError:
-                st.warning(
-                    "지도 마커 표시에 추가 설치가 필요해요.\n\n"
-                    "```\npip install folium streamlit-folium\n```"
-                )
+                st.warning("지도 마커 표시에 추가 설치가 필요해요.\n\n```\npip install folium streamlit-folium\n```")
                 st.map(map_df[["lat", "lon"]], zoom=13)
                 st.caption(f"총 {len(map_df)}곳 표시")
 
@@ -709,13 +1058,9 @@ if df is not None:
             for _, row in map_df.iterrows():
                 rank_num = int(row["rank"])
                 grade_c = MARKER_COLOR.get(row.get("grade", ""), "#E63946")
-                p_url = row.get("place_url", "")
+                p_url = normalize_place_url(row.get("place_url", ""))
                 p_name = row["place_name"]
-                addr = (
-                    row.get("road_address_name")
-                    or row.get("address_name")
-                    or ""
-                )
+                addr = row.get("road_address_name") or row.get("address_name") or ""
                 score = row["quality_score"]
                 grade = row.get("grade", "")
 
@@ -744,44 +1089,38 @@ if df is not None:
 
     # ====== 탭 3: 즐겨찾기 ======
     with tab_fav:
-        st.subheader("즐겨찾기")
+        st.subheader("⭐ 즐겨찾기")
         if not st.session_state.favorites:
-            st.info("아직 즐겨찾기한 장소가 없어요.")
+            st.markdown(
+                "<div style='text-align:center;padding:60px 20px;background:#FFFAF5;"
+                "border-radius:20px;border:2px dashed #FFDAB9;margin:20px 0;'>"
+                "<div style='font-size:48px;margin-bottom:10px;'>⭐</div>"
+                "<div style='font-size:18px;color:#E65100;font-weight:600;'>아직 즐겨찾기한 장소가 없어요</div>"
+                "<div style='font-size:14px;color:#999;margin-top:8px;'>"
+                "추천 리스트에서 ☆ 버튼을 눌러 추가해보세요!</div></div>",
+                unsafe_allow_html=True,
+            )
         else:
             st.markdown(f"**총 {len(st.session_state.favorites)}곳**")
-            for idx, fav in enumerate(st.session_state.favorites):
-                with st.container():
-                    c1, c2 = st.columns([4, 1])
-                    with c1:
-                        st.markdown(f"### {fav['place_name']}")
-                        st.caption(
-                            f"{fav.get('category_name', '')} | {fav.get('address_name', '')}"
-                        )
-                        if fav.get("phone"):
-                            st.caption(fav["phone"])
-                        if fav.get("place_url"):
-                            st.markdown(f"[카카오맵에서 보기]({fav['place_url']})")
-                    with c2:
-                        st.markdown(
-                            render_score_card(
-                                fav.get("quality_score", 0),
-                                fav.get("grade", ""),
-                                fav.get("grade_desc", ""),
-                            ),
-                            unsafe_allow_html=True,
-                        )
-                    if st.button("즐겨찾기 해제", key=f"tdel_{idx}"):
-                        remove_favorite(fav["place_name"])
-                        st.rerun()
-                st.markdown("<hr class='card-divider'>", unsafe_allow_html=True)
 
-            if st.button("전체 초기화", type="secondary"):
+            if st.button("📥 전체 초기화", type="secondary"):
                 st.session_state.favorites = []
                 st.rerun()
 
+            for idx, fav in enumerate(st.session_state.favorites):
+                st.markdown(render_fav_card(fav), unsafe_allow_html=True)
+
+    st.markdown("<div class='fav-del-wrap'>", unsafe_allow_html=True)
+    if st.button("✕", key=f"sfav_del_{idx}"):
+        remove_favorite_by_key(make_favorite_key(fav))
+        st.rerun()
+    st.markdown("</div>", unsafe_allow_html=True)
+
+
+
     # ====== 탭 4: 요약 분석 ======
     with tab_summary:
-        st.subheader("요약 분석")
+        st.subheader("📊 요약 분석")
         if not PLOTLY_AVAILABLE:
             st.warning("차트 표시를 위해 plotly를 설치해주세요: pip install plotly")
 
@@ -836,28 +1175,19 @@ if df is not None:
             st.divider()
 
         st.markdown("#### 전체 결과 테이블")
-        sc = [
-            "rank",
-            "place_name",
-            "category_name",
-            "address_name",
-            "phone",
-            "quality_score",
-            "grade",
-        ]
+        sc = ["rank", "place_name", "category_name", "address_name",
+              "phone", "quality_score", "grade"]
         sc = [c for c in sc if c in df.columns]
         st.dataframe(
-            df[sc].rename(
-                columns={
-                    "rank": "순위",
-                    "place_name": "장소명",
-                    "category_name": "카테고리",
-                    "address_name": "주소",
-                    "phone": "전화번호",
-                    "quality_score": "추천 적합도",
-                    "grade": "등급",
-                }
-            ),
+            df[sc].rename(columns={
+                "rank": "순위",
+                "place_name": "장소명",
+                "category_name": "카테고리",
+                "address_name": "주소",
+                "phone": "전화번호",
+                "quality_score": "추천 적합도",
+                "grade": "등급",
+            }),
             use_container_width=True,
             hide_index=True,
         )

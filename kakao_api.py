@@ -1,6 +1,7 @@
 import requests
 import streamlit as st
 
+
 def _load_key(key_name):
     try:
         import config
@@ -17,7 +18,9 @@ def _load_key(key_name):
         pass
     return ""
 
+
 KAKAO_API_KEY = _load_key("KAKAO_API_KEY")
+
 
 def search_places(query, page=1, size=15):
     if not KAKAO_API_KEY:
@@ -37,7 +40,7 @@ def search_places(query, page=1, size=15):
         if response.status_code == 200:
             data = response.json()
             return {"documents": data.get("documents", []), "meta": data.get("meta", {}), "error": None}
-        
+
         status = response.status_code
         if status == 401:
             return {"documents": [], "meta": {}, "error": "인증 실패. REST API 키를 확인해주세요."}
@@ -47,7 +50,7 @@ def search_places(query, page=1, size=15):
             return {"documents": [], "meta": {}, "error": "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."}
         else:
             return {"documents": [], "meta": {}, "error": f"서버 오류 (HTTP {status})"}
-    
+
     except requests.Timeout:
         return {"documents": [], "meta": {}, "error": "서버 응답 시간 초과."}
     except requests.ConnectionError:
@@ -55,20 +58,15 @@ def search_places(query, page=1, size=15):
     except Exception as e:
         return {"documents": [], "meta": {}, "error": f"오류: {str(e)}"}
 
+
 def search_places_multi(query, total_size=15):
-    """
-    여러 페이지를 순회해서 total_size 개수만큼 문서를 모음.
-    - 한 페이지 15개, 최대 45페이지까지 가능 (Kakao 제한)
-    - is_end=true면 조기 종료
-    - 결과 메타에 fetched_count, pages_fetched, is_truncated 정보 포함
-    """
     all_docs = []
     page = 1
     max_pages = 45
-    
+
     while len(all_docs) < total_size and page <= max_pages:
         result = search_places(query, page=page, size=15)
-        
+
         if result["error"]:
             meta_info = {
                 "total_count": len(all_docs),
@@ -83,19 +81,19 @@ def search_places_multi(query, total_size=15):
                 "meta": meta_info,
                 "error": None
             }
-        
+
         docs = result["documents"]
         if not docs:
             break
         all_docs.extend(docs)
-        
+
         meta = result.get("meta", {})
         is_end = meta.get("is_end", True)
-        
+
         if is_end:
             break
         page += 1
-    
+
     result_docs = all_docs[:total_size]
     meta_info = {
         "total_count": len(all_docs),
@@ -104,7 +102,7 @@ def search_places_multi(query, total_size=15):
         "pages_fetched": page,
         "is_truncated": (len(all_docs) > total_size) or (not is_end and page <= max_pages)
     }
-    
+
     return {
         "documents": result_docs,
         "meta": meta_info,
